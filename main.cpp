@@ -67,99 +67,78 @@ int main(int argc, char* argv[]){
         map_righty
     );
 
+#if __linux__
     auto stream_left = VideoCapture("/dev/video2", CAP_V4L2);
-    auto stream_right = VideoCapture("/dev/video4", CAP_V4L2);
+    auto stream_right = VideoCapture("/dev/video4" CAP_V4l2);
+#elif __APPLE__
+    auto stream_left = VideoCapture(0, CAP_AVFOUNDATION);
+    auto stream_right = VideoCapture(1, CAP_AVFOUNDATION);
+#endif
+
+    stream_left.set(CAP_PROP_FRAME_WIDTH, 1280);
+    stream_left.set(CAP_PROP_FRAME_HEIGHT, 720);
+    stream_right.set(CAP_PROP_FRAME_WIDTH, 1280);
+    stream_right.set(CAP_PROP_FRAME_HEIGHT, 720);
 
     Mat left_img, right_img;
     Mat left_out, right_out;
     while (true) {
-        auto start_time = high_resolution_clock::now();
+        // auto start_time = high_resolution_clock::now();
 
         stream_left.read(left_img); 
         stream_right.read(right_img);
 
-        cvtColor(left_img, left_img, COLOR_BGR2RGB);
-        cvtColor(right_img, right_img, COLOR_BGR2RGB);
+        cvtColor(left_img, left_img, COLOR_RGB2RGBA);
+        cvtColor(right_img, right_img, COLOR_RGB2RGBA);
 
-        remap(left_img, left_out, map_leftx, map_lefty, INTER_LINEAR, BORDER_CONSTANT, Scalar());
-        remap(right_img, right_out, map_rightx, map_righty, INTER_LINEAR, BORDER_CONSTANT, Scalar());
+        imshow("left_image", left_img);
 
-        imshow("left", left_out);
-        imshow("right", right_out);
+        int kernel_size = 3;
 
+        Mat smooth_left, smooth_right;
+        GaussianBlur(left_img, smooth_left, Size(kernel_size, kernel_size), 1.5);
+        GaussianBlur(right_img, smooth_right, Size(kernel_size, kernel_size), 1.5);
 
-        // disparity map
-        // char c = static_cast<char>(waitKey(1) & 0xff);
-        // if (c == 0x43 || c == 0x63) {
+        int window_size = 9;
+        Ptr<StereoSGBM> left_matcher =
+            StereoSGBM::create(
+                0,  /* min disparity */ 
+                96, /* num disparity */
+                7,  /* block size */
+                8 * 3 * pow(window_size, 2), /* P1 */
+                32 * 3 * pow(window_size, 2), /* p2 */
+                1,  /* disp12MaxDiff */
+                0,  /* preFilterCap */
+                16, /* uniquenessRatio */
+                0,  /* speckleWindowSize */
+                2,  /* speckleRange */
+                cv::StereoSGBM::MODE_SGBM_3WAY /* mode */
+            );
 
-            Mat gray_left, gray_right;
+        Ptr<StereoMatcher> right_matcher = ximgproc::createRightMatcher(left_matcher);
 
-            cvtColor(left_img, gray_left, COLOR_RGB2GRAY);
-            cvtColor(right_img, gray_right, COLOR_RGB2GRAY);
+        Ptr<ximgproc::DisparityWLSFilter> wls_filter = 
+            ximgproc::createDisparityWLSFilter(left_matcher);
 
-            int kernel_size = 7;
+        wls_filter->setLambda(80000);
+        wls_filter->setSigmaColor(1.2);
 
-            // int ndisparities = 32;
-            // int blocksize = 15;
+        Mat disparity_left;
+        left_matcher->compute(smooth_left, smooth_right, disparity_left);
+        disparity_left.convertTo(disparity_left, CV_16S);
 
-            // // create stereo image
-            // Mat img_disparity_16s, img_disparity_8u;
+        Mat disparity_right;
+        right_matcher->compute(smooth_right, smooth_left, disparity_right);
+        disparity_right.convertTo(disparity_right, CV_16S);
 
-            // cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create(ndisparities, blocksize);
-            // stereo->compute(gray_left, gray_right, img_disparity_16s);
+        Mat wls_image;
+        wls_filter->filter(disparity_left, smooth_left, wls_image, disparity_right, cv::Rect(), smooth_right);
+        // wls_filter->filter(disparity_left, smooth_left, wls_image, disparity_right);
+        cv::normalize(wls_image, wls_image, 255.0f, 0.0f, NORM_MINMAX);
+        // cv::normalize(wls_image, wls_image, 255.0, NORM_MINMAX);
+        wls_image.convertTo(wls_image, CV_8U);
 
-            // // normalize img_disparity_16s
-            // double minVal; double maxVal;
-            // minMaxLoc( img_disparity_16s, &minVal, &maxVal );
-            // // cout << "min : " << minVal << ", max : " << maxVal << endl;
-            // img_disparity_16s.convertTo(img_disparity_8u, CV_8UC1, 255/(maxVal - minVal));
-
-            // // imshow("left", img1);
-            // // imshow("right", img2);    
-            // imshow("disparity", img_disparity_8u);
-
-            Mat smooth_left, smooth_right;
-            GaussianBlur(left_img, smooth_left, Size(kernel_size, kernel_size), 1, 5);
-            GaussianBlur(right_img, smooth_right, Size(kernel_size, kernel_size), 1, 5);
-
-            int window_size = 9;
-            Ptr<StereoSGBM> left_matcher =
-                StereoSGBM::create(
-                    0,  /* min disparity */ 
-                    96, /* num disparity */
-                    7,  /* block size */
-                    8 * 3 * pow(window_size, 2), /* P1 */
-                    32 * 3 * pow(window_size, 2), /* p2 */
-                    1,  /* disp12MaxDiff */
-                    0,  /* preFilterCap */
-                    16, /* uniquenessRatio */
-                    0,  /* speckleWindowSize */
-                    2,  /* speckleRange */
-                    cv::StereoSGBM::MODE_SGBM_3WAY /* mode */
-                );
-
-            Ptr<StereoMatcher> right_matcher = ximgproc::createRightMatcher(left_matcher);
-
-            Ptr<ximgproc::DisparityWLSFilter> wls_filter = 
-                ximgproc::createDisparityWLSFilter(left_matcher);
-
-            wls_filter->setLambda(80000);
-            wls_filter->setSigmaColor(1.2);
-
-            Mat disparity_left;
-            left_matcher->compute(left_img, right_img, disparity_left);
-            disparity_left.convertTo(disparity_left, CV_16S);
-
-            Mat disparity_right;
-            right_matcher->compute(left_img, right_img, disparity_right);
-            disparity_right.convertTo(disparity_right, CV_16S);
-
-            Mat wls_image;
-            wls_filter->filter(disparity_left, left_img, wls_image, disparity_right, cv::Rect(), right_img);
-            cv::normalize(wls_image, wls_image, 255.0f, 0.0f, NORM_MINMAX);
-            wls_image.convertTo(wls_image, CV_8U);
-
-            imshow("dispairty map", wls_image);
+        imshow("dispairty map", wls_image);
 
             // // Mat imgDisparity16S = Mat(left_img.rows, left_img.cols, CV_16S);
             // // Mat imgDisparity8U = Mat(right_img.rows, right_img.cols, CV_8UC1);
@@ -193,13 +172,13 @@ int main(int argc, char* argv[]){
             // // imshow("windowDisparity", imgDisparity8U);
             // // imshow("16S", imgDisparity16S);
         // }
-        auto end_time = high_resolution_clock::now();
-        duration<double> elapse =  end_time - start_time;
+        // auto end_time = high_resolution_clock::now();
+        // duration<double> elapse =  end_time - start_time;
 
-        double sleep_time = (1 / 30.f) - elapse.count();
-        if (sleep_time > 0) {
-            std::this_thread::sleep_for(microseconds(static_cast<int>(sleep_time * 1e6)));
-        }
+        // double sleep_time = (1 / 30.f) - elapse.count();
+        // if (sleep_time > 0) {
+        //     std::this_thread::sleep_for(microseconds(static_cast<int>(sleep_time * 1e6)));
+        // }
 
 
         if (waitKey(1) == 27)
