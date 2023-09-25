@@ -37,8 +37,8 @@ if __name__ == '__main__':
                                                         5 # CV_32FC1
                                                         )
 
-    stream_left = cv.VideoCapture(0)
-    stream_right = cv.VideoCapture(1)
+    stream_left = cv.VideoCapture("./data/left.mp4")
+    stream_right = cv.VideoCapture("./data/right.mp4")
 
     stream_left.set(cv.CAP_PROP_FRAME_WIDTH, 660),
     stream_left.set(cv.CAP_PROP_FRAME_HEIGHT, 480),
