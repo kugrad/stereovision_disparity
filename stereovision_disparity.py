@@ -40,6 +40,10 @@ if __name__ == '__main__':
     stream_left = cv.VideoCapture("./data/left.mp4")
     stream_right = cv.VideoCapture("./data/right.mp4")
 
+    # realtime 
+    stream_left = cv.VideoCapture(0)
+    stream_right = cv.VideoCapture(1)
+
     stream_left.set(cv.CAP_PROP_FRAME_WIDTH, 660),
     stream_left.set(cv.CAP_PROP_FRAME_HEIGHT, 480),
     stream_left.set(cv.CAP_PROP_FPS, 30.0)
@@ -56,12 +60,12 @@ if __name__ == '__main__':
         left_img = cv.cvtColor(left_img, cv.COLOR_RGB2GRAY)
         right_img = cv.cvtColor(right_img, cv.COLOR_RGB2GRAY)
 
-        kernel_size = 3
+        kernel_size = 5
 
         smooth_left = cv.GaussianBlur(left_img, (kernel_size, kernel_size), 1.5)
         smooth_right = cv.GaussianBlur(right_img, (kernel_size, kernel_size), 1.5)
 
-        window_size = 9    
+        window_size = 7
         left_matcher = cv.StereoSGBM_create(
 	        numDisparities=96,
 	        blockSize=7,
@@ -90,3 +94,7 @@ if __name__ == '__main__':
 
         if cv.waitKey(1) == 27:
             break
+
+stream_left.release()
+stream_right.release()
+cv.destroyAllWindows()
