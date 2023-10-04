@@ -13,13 +13,18 @@ pkg_check_modules(yaml_cpp REQUIRED IMPORTED_TARGET yaml-cpp)
 pkg_check_modules(jsoncpp REQUIRED IMPORTED_TARGET jsoncpp)
 pkg_check_modules(fmt REQUIRED IMPORTED_TARGET fmt)
 
-include_directories(include)
+# include_directories(include)
 
 add_executable(${CMAKE_PROJECT_NAME}
     main.cpp
+
+    src/ReadStereoFS.cpp
+    src/CamModify.cpp
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE 
+    include
+
     ${OpenCV_INCLUDE_DIR}
 )
 
@@ -32,6 +37,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
 
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE 
     "CONFIG_DIR_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/config/\""
+    "DATA_DIR_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/data/\""
 )
 
 # set(CPACK_PROJECT_NAME ${PROJECT_NAME})
