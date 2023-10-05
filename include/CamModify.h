@@ -7,8 +7,10 @@
 #include <opencv2/ximgproc.hpp>
 #include <opencv2/calib3d.hpp>
 
-typedef std::pair<cv::Mat, cv::Mat> pairMatMat;
+#define TEST 1
+#define STEREOSGBM 1
 
+typedef std::pair<cv::Mat, cv::Mat> pairMatMat;
 
 class CamModify {
 public:
@@ -40,13 +42,18 @@ private:
     cv::Mat filtered_img;
     cv::Mat point_cloud;
 
+#if STEREOSGBM
     cv::Ptr<cv::StereoSGBM> stereo;
+#else
+    cv::Ptr<cv::StereoBM> stereo;
+#endif
     cv::Ptr<cv::StereoMatcher> stereoR;
     cv::Ptr<cv::ximgproc::DisparityWLSFilter> wls_filter;
 
 
+#if STEREOSGBM
     // Stereo SBGM parameter value
-    const static int window_block_size = 3;
+    const static int window_block_size = 9;
     const static int min_disparity = 2;
     const static int num_disparity = 130 - min_disparity; 
     const static int P1 = 8 * 3 * window_block_size * window_block_size;
@@ -56,11 +63,15 @@ private:
     const static int uniquenessRatio = 10;
     const static int speckleWindowSize = 100;
     const static int speckleRange = 32;
-    const static int mode = 0;
+    const static int mode = cv::StereoSGBM::MODE_SGBM_3WAY;
+#else
+    const static int num_disparity = 16;
+    const static int window_block_size = 11;
+#endif
 
     // wls filter parameter value
-    const static double lmbda = 80000;
-    const static double sigma = 1.8;
+    constexpr static double lmbda = 80000;
+    constexpr static double sigma = 1.8;
 
 };
 

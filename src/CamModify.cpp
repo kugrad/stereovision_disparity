@@ -5,14 +5,19 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-
 using namespace cv;
 
 CamModify::CamModify(const ReadStereoFS& config_storage)
     :
     config_storage(config_storage),
+#if TEST
+    stream_l(VideoCapture(DATA_DIR_PATH "left.mp4")),
+    stream_r(VideoCapture(DATA_DIR_PATH "right.mp4")),
+#else
     stream_l(VideoCapture(0)),
     stream_r(VideoCapture(2)),
+#endif
+#if STEREOSGBM
     stereo(StereoSGBM::create(
         min_disparity,
         num_disparity, 
@@ -26,6 +31,12 @@ CamModify::CamModify(const ReadStereoFS& config_storage)
         speckleRange,
         mode
     )),
+#else
+    stereo(StereoBM::create(
+        num_disparity,
+        window_block_size
+    )),
+#endif
     stereoR(ximgproc::createRightMatcher(stereo)),
     wls_filter(ximgproc::createDisparityWLSFilter(stereo))
 { 
@@ -112,6 +123,8 @@ pairMatMat CamModify::undistortImage() {
 
     remap(image_l, out_l, left_stereo_map.first, left_stereo_map.second, INTER_LANCZOS4, BORDER_CONSTANT);
     remap(image_r, out_r, right_stereo_map.first, right_stereo_map.second, INTER_LANCZOS4, BORDER_CONSTANT);
+    // remap(image_l, out_l, left_stereo_map.first, left_stereo_map.second, INTER_LINEAR, BORDER_CONSTANT);
+    // remap(image_r, out_r, right_stereo_map.first, right_stereo_map.second, INTER_LINEAR, BORDER_CONSTANT);
 
     image_l = out_l.clone();
     image_r = out_r.clone();
