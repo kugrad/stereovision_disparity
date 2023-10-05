@@ -8,6 +8,7 @@ set(CMAKE_C_STANDARD 17)
 
 find_package(PkgConfig REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED)
 
 pkg_check_modules(yaml_cpp REQUIRED IMPORTED_TARGET yaml-cpp)
 pkg_check_modules(jsoncpp REQUIRED IMPORTED_TARGET jsoncpp)

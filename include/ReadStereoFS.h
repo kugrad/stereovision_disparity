@@ -17,6 +17,8 @@ private:
     cv::Mat projection_mat_l;
     cv::Mat projection_mat_r;
 
+    cv::Mat Q;
+
 public:
     ReadStereoFS() = delete;
     ReadStereoFS(std::string calrec_config_path);
@@ -30,6 +32,7 @@ public:
     const cv::Mat rectifyMat_right() const;
     const cv::Mat projectionMat_left() const;
     const cv::Mat projectionMat_right() const;
+    const cv::Mat disparity_Q() const;
 };
 
 #endif

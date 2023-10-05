@@ -21,6 +21,8 @@ ReadStereoFS::ReadStereoFS(std::string calrec_config_path)
     storage["projection_left"] >> projection_mat_l;
     storage["projection_right"] >> projection_mat_r;
 
+    storage["disparity"] >> Q;
+
     storage.release();
 }
 
@@ -58,4 +60,8 @@ const Mat ReadStereoFS::projectionMat_left() const {
 
 const Mat ReadStereoFS::projectionMat_right() const {
     return projection_mat_r;
+}
+
+const Mat ReadStereoFS::disparity_Q() const {
+    return Q;
 }
