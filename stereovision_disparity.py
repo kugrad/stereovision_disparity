@@ -1,7 +1,8 @@
-#! /opt/homebrew/bin/python3
-
 import cv2 as cv
 import numpy as np
+
+TEST = 1
+STEREOSGBM = 1
 
 if __name__ == '__main__':
     fs = cv.FileStorage("./config/calib_storage.yaml", cv.FILE_STORAGE_READ)
@@ -37,12 +38,13 @@ if __name__ == '__main__':
                                                         5 # CV_32FC1
                                                         )
 
-    stream_left = cv.VideoCapture("./data/left.mp4")
-    stream_right = cv.VideoCapture("./data/right.mp4")
-
-    # realtime 
-    # stream_left = cv.VideoCapture(0)
-    # stream_right = cv.VideoCapture(1)
+    stream_left, stream_right = None, None
+    if TEST:
+        stream_left = cv.VideoCapture("./data/left.mp4")
+        stream_right = cv.VideoCapture("./data/right.mp4")
+    else:
+        stream_left = cv.VideoCapture(2)
+        stream_right = cv.VideoCapture(4)
 
     stream_left.set(cv.CAP_PROP_FRAME_WIDTH, 660),
     stream_left.set(cv.CAP_PROP_FRAME_HEIGHT, 480),
@@ -52,19 +54,27 @@ if __name__ == '__main__':
     stream_right.set(cv.CAP_PROP_FPS, 30.0)
 
     # Create StereoSGBM and prepare all parameters
-    window_size = 3
-    min_disp = 2
-    num_disp = 130 - min_disp
-    stereo = cv.StereoSGBM_create(
-        minDisparity=min_disp,
-        numDisparities=num_disp,
-        blockSize=window_size,
-        uniquenessRatio=10,
-        speckleWindowSize=100,
-        speckleRange=32,
-        disp12MaxDiff=5,
-        P1=8*3*window_size**2,
-        P2=32*3*window_size**2)
+    window_block_size = 9
+    min_disparity = 2
+    num_disparity = 130 - min_disparity
+
+    stereo = None
+    if STEREOSGBM:
+        stereo = cv.StereoSGBM_create(
+                    minDisparity=min_disparity,
+                    numDisparities=num_disparity,
+                    blockSize=window_block_size,
+                    P1=(8 * 3 * window_block_size**2),
+                    P2=(32 * 3 * window_block_size**2),
+                    disp12MaxDiff=5,
+                    preFilterCap=0,
+                    uniquenessRatio=10,
+                    speckleWindowSize=100,
+                    speckleRange=32,
+                    mode=cv.StereoSGBM_MODE_SGBM_3WAY
+                    )
+    else:
+        stereo = cv.StereoBM_create(numDisparities=16, blockSize=21)
 
     # Used for the filtered image
     stereoR = cv.ximgproc.createRightMatcher(stereo) # Create another stereo for right this time
@@ -86,48 +96,46 @@ if __name__ == '__main__':
 
         # cv.imshow("left_image", left_img)
 
-        left_img = cv.cvtColor(left_img, cv.COLOR_BGR2RGB)
-        right_img = cv.cvtColor(right_img, cv.COLOR_BGR2RGB)
+        # left_img = cv.cvtColor(left_img, cv.COLOR_BGR2RGB)
+        # right_img = cv.cvtColor(right_img, cv.COLOR_BGR2RGB)
 
-        left_nice = cv.remap(left_img, map_leftx, map_lefty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
-        right_nice = cv.remap(right_img, map_rightx, map_righty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
+        left_undistored_image = cv.remap(left_img, map_leftx, map_lefty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
+        right_undistored_image = cv.remap(right_img, map_rightx, map_righty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
 
-        grayL = cv.cvtColor(left_nice, cv.COLOR_RGB2GRAY)
-        grayR = cv.cvtColor(right_nice, cv.COLOR_RGB2GRAY)
+        gray_l = cv.cvtColor(left_undistored_image, cv.COLOR_RGB2GRAY)
+        gray_r = cv.cvtColor(right_undistored_image, cv.COLOR_RGB2GRAY)
 
-        disp = stereo.compute(grayL,grayR)#.astype(np.float32)/ 16
-        dispL = disp
-        dispR = stereoR.compute(grayR,grayL)
-        dispL = np.int16(dispL)
-        dispR = np.int16(dispR)
+        disp = stereo.compute(gray_l, gray_r)
+        disp_l = disp
+        disp_r = stereoR.compute(gray_r, gray_l)
+        disp_l = np.int16(disp_l)
+        disp_r = np.int64(disp_r)
 
         # Using the WLS filter
-        filteredImg = wls_filter.filter(dispL,grayL,None,dispR)
-        filteredImg = cv.normalize(src=filteredImg, dst=filteredImg, beta=0, alpha=255, norm_type=cv.NORM_MINMAX)
-        filteredImg = np.uint8(filteredImg)
+        filtered_img = wls_filter.filter(disp_l, gray_l, None, disp_r)
+        filtered_img = cv.normalize(src=filtered_img, dst=filtered_img, beta=0, alpha=255, norm_type=cv.NORM_MINMAX)
+        filtered_img = np.uint8(filtered_img)
 
-        disp = ((disp.astype(np.float32)/ 16)-min_disp)/num_disp # Calculation allowing us to have 0 for the most distant object able to detect
+        disp = ((disp.astype(np.float32) / 16) - min_disparity) / num_disparity # Calculation allowing us to have 0 for the most distant object able to detect
 
     #    # Resize the image for faster executions
-    #    dispR= cv2.resize(disp,None,fx=0.7, fy=0.7, interpolation = cv2.INTER_AREA)
+        # dispR = cv.resize(disp, None, fx=0.7, fy=0.7, interpolation=cv.INTER_AREA)
 
         # Filtering the Results with a closing filter
         closing= cv.morphologyEx(disp, cv.MORPH_CLOSE, kernel) # Apply an morphological filter for closing little "black" holes in the picture(Remove noise) 
 
-        # Colors map
-        dispc= (closing-closing.min())*255
-        dispC= dispc.astype(np.uint8)                                   # Convert the type of the matrix from float32 to uint8, this way you can show the results with the function cv2.imshow()
-        disp_Color= cv.applyColorMap(dispC,cv.COLORMAP_OCEAN)         # Change the Color of the Picture into an Ocean Color_Map
-        filt_Color= cv.applyColorMap(filteredImg,cv.COLORMAP_OCEAN) 
+        # # Colors map
+        dispc = (closing - closing.min()) * 255
+        dispC = dispc.astype(np.uint8)                                   # Convert the type of the matrix from float32 to uint8, this way you can show the results with the function cv2.imshow()
+        disp_Color= cv.applyColorMap(dispC, cv.COLORMAP_OCEAN)         # Change the Color of the Picture into an Ocean Color_Map
+        filt_Color= cv.applyColorMap(filtered_img, cv.COLORMAP_OCEAN) 
 
         # Show the result for the Depth_image
+        # cv.imshow("filtered_img", filtered_img)
         # cv.imshow('Disparity', disp)
         # cv2.imshow('Closing',closing)
         # cv.imshow('Color Depth',disp_Color)
-        cv.imshow('Filtered Color Depth',filt_Color)
-        # left_img = cv.cvtColor(left_img, cv.COLOR_RGB2GRAY)
-        # right_img = cv.cvtColor(right_img, cv.COLOR_RGB2GRAY)
-
+        cv.imshow('Filtered Color Depth', filt_Color)
 
         # kernel_size = 3
 

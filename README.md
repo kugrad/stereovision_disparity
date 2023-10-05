@@ -1,9 +1,27 @@
 # Using python
 
-Just using python file (NOT C++)
+## Just using python file (NOT C++)
 
 ``` bash
 python3 stereovison_disparity.py
+```
+
+## python config
+
+``` python
+   # line start at 4
+ 4 TEST = 1
+ 5 STEREOSGBM = 1
+   # TEST
+   #
+   # if TEST is set to 1, we gonna use pre recorded video in "data" directory, left.mp4, right.mp4.
+   # By the way, set to 0, we will use connected video cam (But only compatible with ubuntu-linux)
+
+   # STEREOSGBM
+   #
+   # if #define STEREOSGBM is set to 1, then we gonna use StereoSGBM.
+   # However, it is set to 0, use StereoBM
+   #
 ```
 
 # BUILD with CMake
