@@ -4,6 +4,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <pcl/visualization/cloud_viewer.h>
 
 using namespace cv;
 
@@ -121,10 +122,10 @@ pairMatMat CamModify::undistortImage() {
 
     Mat out_l, out_r;
 
-    remap(image_l, out_l, left_stereo_map.first, left_stereo_map.second, INTER_LANCZOS4, BORDER_CONSTANT);
-    remap(image_r, out_r, right_stereo_map.first, right_stereo_map.second, INTER_LANCZOS4, BORDER_CONSTANT);
-    // remap(image_l, out_l, left_stereo_map.first, left_stereo_map.second, INTER_LINEAR, BORDER_CONSTANT);
-    // remap(image_r, out_r, right_stereo_map.first, right_stereo_map.second, INTER_LINEAR, BORDER_CONSTANT);
+    // remap(image_l, out_l, left_stereo_map.first, left_stereo_map.second, INTER_LANCZOS4, BORDER_CONSTANT);
+    // remap(image_r, out_r, right_stereo_map.first, right_stereo_map.second, INTER_LANCZOS4, BORDER_CONSTANT);
+    remap(image_l, out_l, left_stereo_map.first, left_stereo_map.second, INTER_LINEAR, BORDER_CONSTANT);
+    remap(image_r, out_r, right_stereo_map.first, right_stereo_map.second, INTER_LINEAR, BORDER_CONSTANT);
 
     image_l = out_l.clone();
     image_r = out_r.clone();

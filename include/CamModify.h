@@ -53,20 +53,20 @@ private:
 
 #if STEREOSGBM
     // Stereo SBGM parameter value
-    const static int window_block_size = 9;
-    const static int min_disparity = 2;
-    const static int num_disparity = 130 - min_disparity; 
-    const static int P1 = 8 * 3 * window_block_size * window_block_size;
-    const static int P2 = 32 * 3 * window_block_size * window_block_size;
-    const static int disp12MaxDiff = 5;
-    const static int preFilterCap = 0;
-    const static int uniquenessRatio = 10;
-    const static int speckleWindowSize = 100;
-    const static int speckleRange = 32;
-    const static int mode = cv::StereoSGBM::MODE_SGBM_3WAY;
+    constexpr static int window_block_size = 3;
+    constexpr static int min_disparity = 2;
+    constexpr static int num_disparity = 130 - min_disparity; 
+    constexpr static int P1 = 8 * 3 * (window_block_size * window_block_size);
+    constexpr static int P2 = 32 * 3 * (window_block_size * window_block_size);
+    constexpr static int disp12MaxDiff = 5;
+    constexpr static int preFilterCap = 10;
+    constexpr static int uniquenessRatio = 10;
+    constexpr static int speckleWindowSize = 100;
+    constexpr static int speckleRange = 32;
+    constexpr static int mode = cv::StereoSGBM::MODE_SGBM_3WAY;
 #else
     const static int num_disparity = 16;
-    const static int window_block_size = 11;
+    const static int window_block_size = 21;
 #endif
 
     // wls filter parameter value

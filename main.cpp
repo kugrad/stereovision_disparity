@@ -30,7 +30,6 @@ int main(int argc, char* argv[]){
         core.takePicture();
         core.undistortImage();
         core.imageCvt2Gray();
-
         core.makeDisparityImages();
         core.filterStereoImage();
         core.showResultImage();

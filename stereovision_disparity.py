@@ -1,5 +1,8 @@
+#! /usr/bin/env python3
+
 import cv2 as cv
 import numpy as np
+import time
 
 TEST = 1
 STEREOSGBM = 1
@@ -91,25 +94,34 @@ if __name__ == '__main__':
     kernel= np.ones((3,3),np.uint8)
 
     while True:
-        ret, left_img = stream_left.read()
         ret, right_img = stream_right.read()
+        ret, left_img = stream_left.read()
 
         # cv.imshow("left_image", left_img)
 
         # left_img = cv.cvtColor(left_img, cv.COLOR_BGR2RGB)
         # right_img = cv.cvtColor(right_img, cv.COLOR_BGR2RGB)
 
-        left_undistored_image = cv.remap(left_img, map_leftx, map_lefty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
-        right_undistored_image = cv.remap(right_img, map_rightx, map_righty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
+        # left_undistored_image = cv.remap(left_img, map_leftx, map_lefty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
+        # right_undistored_image = cv.remap(right_img, map_rightx, map_righty, interpolation=cv.INTER_LANCZOS4, borderMode=cv.BORDER_CONSTANT) # Scalar()
+        left_undistored_image = cv.remap(left_img, map_leftx, map_lefty, cv.INTER_LINEAR, cv.BORDER_CONSTANT) # Scalar()
+        right_undistored_image = cv.remap(right_img, map_rightx, map_righty, cv.INTER_LINEAR, cv.BORDER_CONSTANT) # Scalar()
 
         gray_l = cv.cvtColor(left_undistored_image, cv.COLOR_RGB2GRAY)
         gray_r = cv.cvtColor(right_undistored_image, cv.COLOR_RGB2GRAY)
+
+        cv.imshow("left gray", gray_l)
+        cv.imshow("right gray", gray_r)
+
+        # # GaussianBlur
+        # gray_l = cv.GaussianBlur(gray_l, (3, 3), 0)
+        # gray_r = cv.GaussianBlur(gray_r, (3, 3), 0)
 
         disp = stereo.compute(gray_l, gray_r)
         disp_l = disp
         disp_r = stereoR.compute(gray_r, gray_l)
         disp_l = np.int16(disp_l)
-        disp_r = np.int64(disp_r)
+        disp_r = np.int16(disp_r)
 
         # Using the WLS filter
         filtered_img = wls_filter.filter(disp_l, gray_l, None, disp_r)
@@ -131,7 +143,7 @@ if __name__ == '__main__':
         filt_Color= cv.applyColorMap(filtered_img, cv.COLORMAP_OCEAN) 
 
         # Show the result for the Depth_image
-        # cv.imshow("filtered_img", filtered_img)
+        cv.imshow("filtered_img", filtered_img)
         # cv.imshow('Disparity', disp)
         # cv2.imshow('Closing',closing)
         # cv.imshow('Color Depth',disp_Color)
