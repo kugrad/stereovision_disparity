@@ -5,7 +5,7 @@ import cv2 as cv
 import threading
 import time
 
-TEST = 1
+TEST = 0
 
 lock_l = threading.Lock()
 lock_r = threading.Lock()
@@ -15,36 +15,30 @@ lock_r = threading.Lock()
 image_l = None
 imaeg_r = None
 
+focal_length = 710
+baseline = 0.037
+
 def coords_mouse_disp(event, x, y, flags, param):
     # print("callbakc happend")
     if event == cv.EVENT_LBUTTONDOWN:
         print("{}, {}".format(x, y))
         disp = param
-        print("disparity: {}".format(disp[y, x]))
-
-        #print x,y,disp[y,x],filteredImg[y,x]
-        # average=0
-        # for u in range (-1,2):
-        #     for v in range (-1,2):
-        #         average += disp[y+u,x+v]
-        # average=average/9
-        # Distance= -593.97*average**(3) + 1506.8*average**(2) - 1373.1*average + 522.06
-        # Distance= np.around(Distance*0.01,decimals=2)
-        # print('Distance: '+ str(Distance)+' m')
+        print("disparity: {}".format(disp[y, x] / 16))
+        print("distance: {}".format((focal_length * baseline) / (disp[y, x] / 16)))
 
 def readLeftImage(left_stream: cv.VideoCapture):
     global image_l
     fps_15 = True
 
     while True:
-        if fps_15:
-            lock_l.acquire()
-            _, image_l = left_stream.read()
-            lock_l.release()
-            fps_15 = False
-        else:
-            _, _ = left_stream.read()
-            fps_15 = True
+        # if fps_15:
+        lock_l.acquire()
+        _, image_l = left_stream.read()
+        lock_l.release()
+            # fps_15 = False
+        # else:
+        #     _, _ = left_stream.read()
+        #     fps_15 = True
         
         time.sleep(0.033)
 
@@ -53,14 +47,14 @@ def readRightImage(right_stream: cv.VideoCapture):
     fps_15 = True
 
     while True:
-        if fps_15:
-            lock_r.acquire()
-            ret, image_r = right_stream.read()
-            lock_r.release()
-            fps_15 = False
-        else:
-            _, _ = right_stream.read()
-            fps_15 = True
+        # if fps_15:
+        lock_r.acquire()
+        ret, image_r = right_stream.read()
+        lock_r.release()
+        # fps_15 = False
+        # else:
+        #     _, _ = right_stream.read()
+        #     fps_15 = True
 
         time.sleep(0.033)
 
@@ -115,8 +109,8 @@ if __name__ == '__main__':
         stream_left = cv.VideoCapture("./data/left.mp4")
         stream_right = cv.VideoCapture("./data/right.mp4")
     else:
-        stream_left = cv.VideoCapture(2)
-        stream_right = cv.VideoCapture(4)
+        stream_left = cv.VideoCapture('/dev/video2', cv.CAP_V4L2)
+        stream_right = cv.VideoCapture('/dev/video4', cv.CAP_V4L2)
 
     stream_left.set(cv.CAP_PROP_FRAME_WIDTH, 660),
     stream_left.set(cv.CAP_PROP_FRAME_HEIGHT, 480),
@@ -125,10 +119,10 @@ if __name__ == '__main__':
     stream_right.set(cv.CAP_PROP_FRAME_HEIGHT, 480),
     stream_right.set(cv.CAP_PROP_FPS, 30.0)
 
-    window_block_size = 1
+    window_block_size = 3
     min_disparity = 0
     # num_disparity = 130 - min_disparity
-    num_disparity = 16*5
+    num_disparity = 16 * 5
     smoothing_factor = 4
 
     stereo = cv.StereoSGBM_create(
@@ -137,7 +131,7 @@ if __name__ == '__main__':
                 blockSize=window_block_size,
                 P1=(8 * (window_block_size**2) * smoothing_factor),
                 P2=(32 * (window_block_size**2) * smoothing_factor),
-                # disp12MaxDiff=5,
+                disp12MaxDiff=5,
                 preFilterCap=25,
                 uniquenessRatio=10,
                 speckleWindowSize=100,
@@ -179,8 +173,8 @@ if __name__ == '__main__':
         if np.shape(image_left) == () or np.shape(image_right) == ():
             continue
 
-        # cv.imshow("left", image_left)
-        # cv.imshow("right", image_right)
+        cv.imshow("left", image_left)
+        cv.imshow("right", image_right)
 
         l_undis_img = cv.remap(image_left, map_leftx, map_lefty, cv.INTER_LINEAR, cv.BORDER_CONSTANT) # Scalar()
         r_undis_img = cv.remap(image_right, map_rightx, map_righty, cv.INTER_LINEAR, cv.BORDER_CONSTANT) # Scalar()
@@ -202,14 +196,23 @@ if __name__ == '__main__':
         gray_l = cv.GaussianBlur(gray_l, (3, 3), 0, 0, borderType=cv.INTER_LINEAR)
         gray_r = cv.GaussianBlur(gray_r, (3, 3), 0, 0, borderType=cv.INTER_LINEAR)
 
-        canny_l = cv.Canny(gray_l, 50, 200, L2gradient=True)
-        canny_r = cv.Canny(gray_r, 50, 200, L2gradient=True)
+        # canny_l = cv.Canny(gray_l, 50, 200, L2gradient=True)
+        # canny_r = cv.Canny(gray_r, 50, 200, L2gradient=True)
 
         # cv.imshow("canny left gray", gray_l)
         # cv.imshow("canny right gray", gray_r)
 
-        disp_l = stereo.compute(canny_l, canny_r)
-        disp_r = stereoR.compute(canny_r, canny_l)
+        disp_l = stereo.compute(gray_l, gray_r)
+        disp_r = stereoR.compute(gray_r, gray_l)
+
+        cv.imshow("disp_l", disp_l / (16 * 4))
+
+        # disp_l_real = disp_l.astype(np.float32) / 16
+        # disp_r_real = disp_l.astype(np.float32) / 16
+        # disp_l_real = disp_l.astype(np.float32) / 16
+
+        # cv.imshow("disp_l_real", disp_l.astype(np.float32) / num_disparity)
+        # cv.imshow("disp_r_real", disp_r.astype(np.float32) / num_disparity)
 
         # disp_l = np.int16(disp_l)
         # disp_r = np.int16(disp_r)
