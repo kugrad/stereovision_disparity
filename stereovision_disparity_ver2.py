@@ -23,8 +23,8 @@ def coords_mouse_disp(event, x, y, flags, param):
     if event == cv.EVENT_LBUTTONDOWN:
         print("{}, {}".format(x, y))
         disp = param
-        print("disparity: {}".format(disp[y, x] / 16))
-        print("distance: {}".format((focal_length * baseline) / (disp[y, x] / 16)))
+        # print("disparity: {}".format(disp[y, x] / 16))
+        print("distance: {}cm".format(((focal_length * baseline) / (disp[y, x] / 16)) * 100))
 
 def readLeftImage(left_stream: cv.VideoCapture):
     global image_l
@@ -109,8 +109,10 @@ if __name__ == '__main__':
         stream_left = cv.VideoCapture("./data/left.mp4")
         stream_right = cv.VideoCapture("./data/right.mp4")
     else:
-        stream_left = cv.VideoCapture('/dev/video2', cv.CAP_V4L2)
-        stream_right = cv.VideoCapture('/dev/video4', cv.CAP_V4L2)
+        # stream_left = cv.VideoCapture('/dev/video2', cv.CAP_V4L2)
+        # stream_right = cv.VideoCapture('/dev/video4', cv.CAP_V4L2)
+        stream_left = cv.VideoCapture(0)
+        stream_right = cv.VideoCapture(1)
 
     stream_left.set(cv.CAP_PROP_FRAME_WIDTH, 660),
     stream_left.set(cv.CAP_PROP_FRAME_HEIGHT, 480),
@@ -205,7 +207,7 @@ if __name__ == '__main__':
         disp_l = stereo.compute(gray_l, gray_r)
         disp_r = stereoR.compute(gray_r, gray_l)
 
-        cv.imshow("disp_l", disp_l / (16 * 4))
+        # cv.imshow("disp_l", disp_l / (16 * 4))
 
         # disp_l_real = disp_l.astype(np.float32) / 16
         # disp_r_real = disp_l.astype(np.float32) / 16

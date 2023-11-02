@@ -15,8 +15,8 @@ CamModify::CamModify(const ReadStereoFS& config_storage)
     stream_l(VideoCapture(DATA_DIR_PATH "left.mp4")),
     stream_r(VideoCapture(DATA_DIR_PATH "right.mp4")),
 #else
-    stream_l(VideoCapture(0)),
-    stream_r(VideoCapture(2)),
+    stream_l(VideoCapture("/dev/video2", CAP_V4L2)),
+    stream_r(VideoCapture("/dev/video4", CAP_V4L2)),
 #endif
 #if STEREOSGBM
     stereo(StereoSGBM::create(
@@ -77,7 +77,7 @@ CamModify::~CamModify() {
     image_r.release();
     gray_l.release();
     gray_r.release();
-    point_cloud.release();
+    // point_cloud.release();
     filtered_img.release();
 
     stereo.release();
@@ -145,14 +145,20 @@ pairMatMat CamModify::imageCvt2Gray() {
 
 pairMatMat CamModify::makeDisparityImages() {
 
+    Mat gaus_l, gaus_r;
     Mat out_left, out_right;
 
-    stereo->compute(gray_l, gray_r, out_left);
+    GaussianBlur(gray_l, gaus_l, Size(3, 3), 0, 0, INTER_LINEAR);
+    GaussianBlur(gray_r, gaus_r, Size(3, 3), 0, 0, INTER_LINEAR);
+
+    stereo->compute(gaus_l, gaus_r, out_left);
     out_left.convertTo(disp_l, CV_16S);
 
-    stereoR->compute(gray_r, gray_l, out_right);
+    stereoR->compute(gaus_r, gaus_l, out_right);
     out_right.convertTo(disp_r, CV_16S);
 
+    gaus_l.release();
+    gaus_r.release();
     out_left.release();
     out_right.release();
 
@@ -163,25 +169,27 @@ cv::Mat CamModify::filterStereoImage() {
 
     Mat out;
 
-    wls_filter->filter(disp_l, image_l, out, disp_r);
+    wls_filter->filter(disp_l, gray_l, out, disp_r);
     normalize(out, out, 255.0, 0.0, NORM_MINMAX);
-
     out.convertTo(filtered_img, CV_8U);
 
     out.release();
+
+    applyColorMap(filtered_img, filtered_img_colored, COLORMAP_OCEAN);
 
     return filtered_img;
 }
 
 void CamModify::showResultImage() {
-    imshow("result", filtered_img);
+    imshow("filtered_map", filtered_img);
+    imshow("filtered_map_colored", filtered_img_colored);
 }
 
-cv::Mat CamModify::calculate3DCoordinate() {
-    reprojectImageTo3D(filtered_img, point_cloud, config_storage.disparity_Q(), true);
+// cv::Mat CamModify::calculate3DCoordinate() {
+//     reprojectImageTo3D(filtered_img, point_cloud, config_storage.disparity_Q(), true);
 
-    return point_cloud;
-}
+//     return point_cloud;
+// }
 
 
 
